@@ -1,0 +1,19 @@
+profile_id: health
+display_name: Health Coach
+response_language: en
+timezone: Europe/Madrid
+
+goals:
+  target_weight_kg: 73
+  weekly_target_delta_kg: -0.6
+  calories_per_day: 1900
+  macros_g:
+    protein: 180
+    carbs: 100
+    fat: 60
+
+automation:
+  weigh_in_reminder: "0 7 * * *"
+  daily_summary: "0 21 * * *"
+  gym_routine_weekdays: "0 8 * * 1-5"
+  stale_food_log_nudge_hours: 4

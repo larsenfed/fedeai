@@ -1,0 +1,67 @@
+default_agent: generic
+
+agents:
+  - id: health
+    path: agents/health
+    enabled: true
+    priority: 100
+    command_prefixes:
+      - /health
+      - /food
+      - /weight
+    intents:
+      - nutrition
+      - food_tracking
+      - weight_tracking
+      - fitness
+    keywords:
+      - calorie
+      - calories
+      - macro
+      - macros
+      - protein
+      - carbs
+      - fat
+      - meal
+      - breakfast
+      - lunch
+      - dinner
+      - snack
+      - food
+      - weight
+      - weigh
+      - scale
+      - workout
+      - gym
+
+  - id: generic
+    path: agents/generic
+    enabled: true
+    priority: 1
+    command_prefixes:
+      - /generic
+      - /default
+    intents:
+      - fallback
+      - productivity
+      - general_qa
+    keywords: []
+
+  - id: linkedin-writer-template
+    path: agents/linkedin-writer-template
+    enabled: false
+    priority: 60
+    command_prefixes:
+      - /linkedin
+      - /post
+    intents:
+      - linkedin_drafting
+      - writing_from_audio
+    keywords:
+      - linkedin
+      - post
+      - article
+      - thread
+      - voice note
+      - audio note
+      - transcript

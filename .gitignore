@@ -1,0 +1,32 @@
+__pycache__/
+*.pyc
+.DS_Store
+
+# Local env/secrets
+.env
+.env.*
+*.pem
+*.key
+*.token
+
+# OpenClaw runtime/state
+openclaw/.openclaw/**
+!openclaw/.openclaw/workspace/
+!openclaw/.openclaw/workspace/**
+
+# Workspace runtime artifacts
+openclaw/.openclaw/workspace/state/
+openclaw/.openclaw/workspace/**/.env
+openclaw/.openclaw/workspace/**/.env.*
+openclaw/.openclaw/workspace/**/workspace-state.json
+openclaw/.openclaw/workspace/**/__pycache__/
+openclaw/.openclaw/workspace/**/*.pyc
+
+# Large dependency/build caches
+openclaw/.openclaw/workspace/**/node_modules/
+openclaw/.openclaw/workspace/**/.openclaw-npm-cache/
+openclaw/.openclaw/workspace/**/.cache/
+
+# Imported backups (large/sensitive)
+vm-import/backups/*.tgz
+vm-import/inventory/*.journal.txt

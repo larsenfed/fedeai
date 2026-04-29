@@ -1,0 +1,18 @@
+# /etc/systemd/system/openclaw-gateway.service
+[Unit]
+Description=OpenClaw Gateway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=federico_larsen
+WorkingDirectory=/home/federico_larsen/.openclaw
+Environment=NODE_ENV=production
+ExecStart=/home/federico_larsen/.npm-global/bin/openclaw gateway start
+Restart=always
+RestartSec=5
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

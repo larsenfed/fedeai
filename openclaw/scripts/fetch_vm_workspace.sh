@@ -19,7 +19,7 @@ gcloud compute ssh \
   --command="
     set -euo pipefail
     sudo tar -C /home/${REMOTE_USER} -czf '${REMOTE_TAR}' .openclaw
-    sudo chown federicolarsen:federicolarsen '${REMOTE_TAR}'
+    sudo chown ${REMOTE_USER}:${REMOTE_USER} '${REMOTE_TAR}'
     ls -lh '${REMOTE_TAR}'
   "
 

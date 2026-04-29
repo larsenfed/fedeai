@@ -31,7 +31,7 @@ gcloud compute ssh \
       git pull --ff-only origin \"${BRANCH}\"
 
       mkdir -p \"${REMOTE_RUNTIME_WORKSPACE}\"
-      rsync -a \"${REMOTE_REPO_DIR}/openclaw/.openclaw/workspace/\" \"${REMOTE_RUNTIME_WORKSPACE}/\"
+      rsync -a --delete \"${REMOTE_REPO_DIR}/openclaw/.openclaw/workspace/\" \"${REMOTE_RUNTIME_WORKSPACE}/\"
 
       XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus systemctl --user restart openclaw-gateway.service
       XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus systemctl --user status openclaw-gateway.service --no-pager | sed -n \"1,20p\"

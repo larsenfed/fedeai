@@ -31,6 +31,7 @@ name, language, or domain in global rules.
 - `agents/linkedin-writer-template/`: scaffold for LinkedIn article generation from audio notes.
 - `agents/ROUTING.md`: deterministic routing contract used at message ingress.
 - `skills/`: reusable capabilities shared across agents.
+- `skills/health-visualizer/`: chart generation for macro distribution and weight trends.
 
 ## Security and scope
 - Respect per-agent scope configured in profile config.

@@ -33,6 +33,13 @@ agents:
       - scale
       - workout
       - gym
+      - chart
+      - graph
+      - plot
+      - trend
+      - history
+      - distribution
+      - percentage
 
   - id: generic
     path: agents/generic

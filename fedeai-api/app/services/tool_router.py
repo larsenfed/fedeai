@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from .. import models
 from ..schemas import ToolResponse
+from .meal_vision import estimate_meal_from_text, infer_tool_call_from_text
 
 
 CHART_DIR = Path("charts")
@@ -119,8 +120,76 @@ def build_macro_chart(db: Session, user_ref: str, days: int = 7) -> ToolResponse
     return ToolResponse(tool="chart_macro", ok=True, message="Macro chart generated.", output_path=str(output))
 
 
+def build_calorie_chart(db: Session, user_ref: str, days: int = 7) -> ToolResponse:
+    user = get_or_create_user(db, user_ref)
+    rows = db.scalars(
+        select(models.FoodLog)
+        .where(models.FoodLog.user_id == user.id)
+        .order_by(models.FoodLog.log_date.desc())
+        .limit(days * 15)
+    ).all()
+    if not rows:
+        return ToolResponse(tool="chart_calories", ok=False, message="No food data yet.")
+
+    by_day: dict[str, int] = {}
+    for r in rows:
+        key = r.log_date.isoformat()
+        by_day[key] = by_day.get(key, 0) + int(r.calories)
+    days_sorted = sorted(by_day.keys())[-days:]
+    calories = [by_day[d] for d in days_sorted]
+
+    plt.figure(figsize=(8, 4))
+    plt.bar(days_sorted, calories)
+    plt.xticks(rotation=45, ha="right")
+    plt.tight_layout()
+    plt.title("Calories Per Day")
+    plt.ylabel("kcal")
+    output = CHART_DIR / f"calorie_trend_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.png"
+    plt.savefig(output)
+    plt.close()
+    return ToolResponse(tool="chart_calories", ok=True, message="Calorie chart generated.", output_path=str(output))
+
+
 def route_free_text(db: Session, user_ref: str, text: str) -> ToolResponse:
     lower = text.lower()
+    # AI-first tool mapping for unstructured text.
+    try:
+        ai_call = infer_tool_call_from_text(text)
+        tool = ai_call.get("tool", "unknown")
+        params = ai_call.get("params", {}) or {}
+
+        if tool == "log_weight":
+            w = params.get("weight_kg")
+            if w is not None:
+                return log_weight(db, user_ref, float(w), notes="Logged from AI tool mapping")
+
+        if tool == "chart_weight":
+            return build_weight_chart(db, user_ref, int(params.get("days", 30)))
+
+        if tool == "chart_macro":
+            return build_macro_chart(db, user_ref, int(params.get("days", 7)))
+
+        if tool == "chart_calories":
+            return build_calorie_chart(db, user_ref, int(params.get("days", 7)))
+
+        if tool == "log_food":
+            required = ["meal_type", "food_item", "calories", "protein_g", "carbs_g", "fat_g"]
+            if all(k in params for k in required):
+                return log_food(
+                    db=db,
+                    user_ref=user_ref,
+                    meal_type=str(params["meal_type"]),
+                    food_item=str(params["food_item"]),
+                    calories=int(params["calories"]),
+                    protein_g=float(params["protein_g"]),
+                    carbs_g=float(params["carbs_g"]),
+                    fat_g=float(params["fat_g"]),
+                    notes="Estimated from AI tool mapping",
+                )
+    except Exception:
+        # Fallback to deterministic matching below.
+        pass
+
     weight_match = re.search(r"(\d+(?:[.,]\d+)?)\s*kg", lower)
     if "/weight" in lower or "weight" in lower or weight_match:
         if not weight_match:
@@ -128,13 +197,52 @@ def route_free_text(db: Session, user_ref: str, text: str) -> ToolResponse:
         value = float(weight_match.group(1).replace(",", "."))
         return log_weight(db, user_ref, value, notes="Logged from free text")
 
+    if "calorie" in lower and ("chart" in lower or "trend" in lower or "per day" in lower):
+        days = 7 if "week" in lower else 30 if "month" in lower else 7
+        return build_calorie_chart(db, user_ref, days=days)
+
     if "chart" in lower or "trend" in lower or "graph" in lower:
         if "weight" in lower:
             return build_weight_chart(db, user_ref)
         return build_macro_chart(db, user_ref)
 
-    if "meal" in lower or "food" in lower or "calories" in lower:
-        return ToolResponse(tool="log_food", ok=False, message="Use /api/tools/log-food with structured macros.")
+    meal_signals = [
+        "meal",
+        "food",
+        "calories",
+        "breakfast",
+        "lunch",
+        "dinner",
+        "snack",
+        "had",
+        "ate",
+        "chicken",
+        "avocado",
+        "salad",
+        "olive oil",
+    ]
+    if any(signal in lower for signal in meal_signals):
+        try:
+            estimated = estimate_meal_from_text(text)
+            result = log_food(
+                db=db,
+                user_ref=user_ref,
+                meal_type=estimated["meal_type"],
+                food_item=estimated["food_item"],
+                calories=estimated["calories"],
+                protein_g=estimated["protein_g"],
+                carbs_g=estimated["carbs_g"],
+                fat_g=estimated["fat_g"],
+                notes=estimated.get("notes", "Estimated from free text"),
+            )
+            result.message = (
+                f"Meal logged: {estimated['food_item']} | "
+                f"{estimated['calories']} kcal | "
+                f"P {estimated['protein_g']:.0f}g C {estimated['carbs_g']:.0f}g F {estimated['fat_g']:.0f}g"
+            )
+            return result
+        except Exception as exc:
+            return ToolResponse(tool="log_food", ok=False, message=f"Could not parse meal text: {exc}")
 
     return ToolResponse(tool="unknown", ok=False, message="Could not map message to a tool.")
 

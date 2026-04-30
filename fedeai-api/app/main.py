@@ -8,6 +8,7 @@ from .services.telegram import send_telegram_message
 from .services.meal_vision import estimate_meal_from_image
 from .services.telegram import get_file_bytes
 from .services.tool_router import (
+    build_calorie_chart,
     build_macro_chart,
     build_weight_chart,
     get_goals,
@@ -80,6 +81,8 @@ def api_chart(
 ):
     if payload.chart_type == "weight_trend":
         return build_weight_chart(db, user_ref, payload.days)
+    if payload.chart_type == "calorie_trend":
+        return build_calorie_chart(db, user_ref, payload.days)
     return build_macro_chart(db, user_ref, payload.days)
 
 

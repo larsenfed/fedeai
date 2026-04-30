@@ -27,7 +27,7 @@ class FoodLogRequest(BaseModel):
 
 class ChartRequest(BaseModel):
     days: int = 7
-    chart_type: Literal["macro_pie", "weight_trend"]
+    chart_type: Literal["macro_pie", "weight_trend", "calorie_trend"]
 
 
 class GoalUpsertRequest(BaseModel):

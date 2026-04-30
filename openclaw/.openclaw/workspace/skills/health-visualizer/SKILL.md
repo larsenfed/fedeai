@@ -27,3 +27,7 @@ user-invocable: true
 - If no data exists, explain what entries are missing and how to add them.
 - If chart generation fails due to missing matplotlib, ask to install it:
   - `pip3 install matplotlib`
+- Do not use `sessions_spawn`, `sessions_send`, or `sessions_list` for charts.
+- Do not use `write`/`edit` to create ad-hoc chart data files.
+- Use `exec` to run `health_charts.py`, then send the generated PNG path with
+  the messaging tool.

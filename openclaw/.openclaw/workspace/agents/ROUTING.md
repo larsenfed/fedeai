@@ -17,6 +17,11 @@ If the selected agent is disabled, explain that it is disabled and fall back to
 If no explicit command was used, classify by keyword hits from
 `agents/registry.yaml`.
 
+Numeric override:
+- If the message contains a weight-like value (for example `77.7 kg`, `77kg`,
+  `weight 77.7`, or `weighed 77.7`), route to `health` even if no other
+  keyword matches.
+
 Routing rules:
 - Route to the highest-priority enabled agent with at least one keyword hit.
 - If no hits are found, route to `default_agent` (`generic`).

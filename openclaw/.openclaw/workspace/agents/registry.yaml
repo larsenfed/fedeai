@@ -30,6 +30,8 @@ agents:
       - food
       - weight
       - weigh
+      - kg
+      - kgs
       - scale
       - workout
       - gym

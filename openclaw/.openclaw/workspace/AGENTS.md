@@ -15,6 +15,11 @@ name, language, or domain in global rules.
 - Keep health tracking isolated in `agents/health/`.
 - Keep all non-specialized tasks in `agents/generic/`.
 - If intent is unclear, ask one short clarifying question before acting.
+- Health intents (food/macros/weight/charts) must execute local health scripts directly.
+- Do not use `sessions.resolve`, `sessions_send`, `sessions_list`, or `sessions_spawn` to look for
+  pseudo-sessions like `food-logger`, `health-visualizer`, or `csv-handler`.
+- Do not use generic `write` or `edit` tools to create ad-hoc health logs
+  (`food.log`, `weight.log`, etc.). Use the nutrition tracker CLI only.
 
 ## Scheduling
 - Daily reminders and check-ins must be configured in profile config, not hardcoded here.
@@ -24,6 +29,11 @@ name, language, or domain in global rules.
 - Persist logs and summaries in agent-specific paths under `agents/main/<agent-id>/`.
 - Store structured nutrition data through `skills/food-logger/scripts/nutrition_tracker.py`.
 - Name image files with `YYYY-MM-DD_HHMM_<type>.jpg` for deterministic sorting.
+- If a user asks to log a meal or weight, only confirm success after the write
+  command exits successfully and data is persisted.
+- Canonical storage paths:
+  - `~/.openclaw/agents/main/food-logger/data/nutrition/food_log.csv`
+  - `~/.openclaw/agents/main/food-logger/data/nutrition/weight_log.csv`
 
 ## Workspace structure
 - `agents/health/`: nutrition, weight, and fitness coaching.

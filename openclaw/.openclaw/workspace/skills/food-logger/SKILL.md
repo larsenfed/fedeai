@@ -23,6 +23,8 @@ user-invocable: true
    - Add the meal to the current daily log.
    - Update day totals for calories and macros.
    - Use `scripts/nutrition_tracker.py` to read and write data.
+   - Use direct command execution (example):
+     `python3 skills/food-logger/scripts/nutrition_tracker.py add-food --date 2026-04-30 --meal dinner --food "chicken salad" --calories 650 --protein 45 --carbs 50 --fat 22 --notes "Estimated from photo"`
 
 3. **Respond to the user** (clear and motivating format):
    - Confirm the analyzed meal.
@@ -38,6 +40,9 @@ user-invocable: true
 - Keep tone direct and motivating, like a coach.
 - If the photo is from a scale, do not use this skill (use morning-weigh-in).
 - Always keep a timestamped reference to the image.
+- Never use `sessions.resolve` / `sessions_send` for food logging.
+- Never write meal logs with ad-hoc files (`food.log`, `meals.csv`, etc.).
+- Canonical output file: `~/.openclaw/agents/main/food-logger/data/nutrition/food_log.csv`.
 
 ## Ideal response example
 **User sends breakfast photo**

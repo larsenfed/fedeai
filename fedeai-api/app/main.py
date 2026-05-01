@@ -4,9 +4,11 @@ from sqlalchemy.orm import Session
 from . import models, schemas
 from .config import settings
 from .database import Base, engine, get_db
+from pathlib import Path
+
 from .services.telegram import send_telegram_message
 from .services.meal_vision import estimate_meal_from_image
-from .services.telegram import get_file_bytes
+from .services.telegram import get_file_bytes, send_telegram_photo
 from .services.tool_router import (
     build_calorie_chart,
     build_macro_chart,
@@ -252,5 +254,12 @@ async def telegram_webhook(
         if not text:
             return {"ok": True, "ignored": True}
         result = route_free_text(db, user_ref=user_ref, text=text)
-    await send_telegram_message(chat_id, result.message)
+    if result.output_path:
+        p = Path(result.output_path)
+        if p.exists():
+            await send_telegram_photo(chat_id, p.read_bytes(), caption=result.message)
+        else:
+            await send_telegram_message(chat_id, f"{result.message} (chart file missing on server)")
+    else:
+        await send_telegram_message(chat_id, result.message)
     return {"ok": True}

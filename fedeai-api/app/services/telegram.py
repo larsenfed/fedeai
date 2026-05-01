@@ -10,6 +10,16 @@ async def send_telegram_message(chat_id: str, text: str) -> None:
         await client.post(url, json=payload)
 
 
+async def send_telegram_photo(chat_id: str, photo_bytes: bytes, caption: str | None = None) -> None:
+    url = f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendPhoto"
+    data = {"chat_id": chat_id}
+    if caption:
+        data["caption"] = caption
+    files = {"photo": ("chart.png", photo_bytes, "image/png")}
+    async with httpx.AsyncClient(timeout=30) as client:
+        await client.post(url, data=data, files=files)
+
+
 async def get_file_bytes(file_id: str) -> bytes:
     info_url = f"https://api.telegram.org/bot{settings.telegram_bot_token}/getFile"
     async with httpx.AsyncClient(timeout=30) as client:

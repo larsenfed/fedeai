@@ -51,3 +51,43 @@ def test_unstructured_calorie_chart_request(monkeypatch):
         assert result.ok in [True, False]
     finally:
         db.close()
+
+
+def test_food_log_message_includes_goal_tracking(monkeypatch):
+    def fake_router(_text: str):
+        return {
+            "tool": "log_food",
+            "params": {
+                "meal_type": "lunch",
+                "food_item": "chicken salad",
+                "calories": 600,
+                "protein_g": 45,
+                "carbs_g": 25,
+                "fat_g": 28,
+            },
+        }
+
+    monkeypatch.setattr("app.services.tool_router.infer_tool_call_from_text", fake_router)
+    db = SessionLocal()
+    try:
+        result = route_free_text(db, user_ref="999", text="I had chicken salad for lunch")
+        assert result.ok is True
+        assert "Today total" in result.message
+        assert "Last 7 days" in result.message
+    finally:
+        db.close()
+
+
+def test_unstructured_weight_via_ai_tool_mapping(monkeypatch):
+    def fake_router(_text: str):
+        return {"tool": "log_weight", "params": {"weight_kg": 77.2}}
+
+    monkeypatch.setattr("app.services.tool_router.infer_tool_call_from_text", fake_router)
+    db = SessionLocal()
+    try:
+        result = route_free_text(db, user_ref="999", text="today scale was around seventy seven point two")
+        assert result.ok is True
+        assert result.tool == "log_weight"
+        assert "77.2" in result.message
+    finally:
+        db.close()

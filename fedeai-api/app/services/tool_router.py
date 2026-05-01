@@ -1,5 +1,5 @@
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -65,7 +65,38 @@ def log_food(
     )
     db.add(entry)
     db.commit()
-    return ToolResponse(tool="log_food", ok=True, message=f"Food logged: {food_item}")
+    return ToolResponse(tool="log_food", ok=True, message=_build_food_progress_message(db, user.id, food_item))
+
+
+def _build_food_progress_message(db: Session, user_id: int, food_item: str) -> str:
+    today = date.today()
+    seven_days_ago = today - timedelta(days=6)
+
+    today_rows = db.scalars(
+        select(models.FoodLog).where(models.FoodLog.user_id == user_id, models.FoodLog.log_date == today)
+    ).all()
+    today_total = sum(int(r.calories) for r in today_rows)
+
+    week_rows = db.scalars(
+        select(models.FoodLog).where(models.FoodLog.user_id == user_id, models.FoodLog.log_date >= seven_days_ago)
+    ).all()
+    week_total = sum(int(r.calories) for r in week_rows)
+
+    goal = db.scalar(select(models.UserGoal).where(models.UserGoal.user_id == user_id))
+    daily_goal = goal.daily_calorie_target if goal and goal.daily_calorie_target else 1900
+    weekly_budget = daily_goal * 7
+    weekly_delta = weekly_budget - week_total
+
+    if weekly_delta >= 0:
+        trend = f"{weekly_delta} kcal remaining in your 7-day budget"
+    else:
+        trend = f"{abs(weekly_delta)} kcal over your 7-day budget"
+
+    return (
+        f"Food logged: {food_item}. "
+        f"Today total: {today_total}/{daily_goal} kcal. "
+        f"Last 7 days: {week_total}/{weekly_budget} kcal ({trend})."
+    )
 
 
 def build_weight_chart(db: Session, user_ref: str, days: int = 30) -> ToolResponse:

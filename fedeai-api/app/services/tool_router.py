@@ -226,14 +226,16 @@ def route_free_text(db: Session, user_ref: str, text: str) -> ToolResponse:
                 )
 
         if tool == "update_food":
+            inferred_to_date = _parse_optional_date(params.get("to_date")) or _parse_date_from_text(text)
+            inferred_to_meal = _safe_str(params.get("to_meal_type")) or _infer_meal_type_from_text(text)
             return update_food_entry(
                 db=db,
                 user_ref=user_ref,
                 food_item_contains=_safe_str(params.get("food_item_contains")),
                 meal_type=_safe_str(params.get("meal_type")),
                 from_date=_parse_optional_date(params.get("from_date")),
-                to_date=_parse_optional_date(params.get("to_date")),
-                to_meal_type=_safe_str(params.get("to_meal_type")),
+                to_date=inferred_to_date,
+                to_meal_type=inferred_to_meal,
             )
 
         if tool == "delete_food":
@@ -321,6 +323,95 @@ def _parse_optional_date(v) -> date | None:
         return datetime.strptime(str(v), "%Y-%m-%d").date()
     except ValueError:
         return None
+
+
+def _infer_meal_type_from_text(text: str) -> str | None:
+    lower = text.lower()
+    if any(k in lower for k in ["cena", "dinner"]):
+        return "dinner"
+    if any(k in lower for k in ["desayuno", "breakfast"]):
+        return "breakfast"
+    if any(k in lower for k in ["almuerzo", "comida", "lunch"]):
+        return "lunch"
+    if any(k in lower for k in ["snack", "merienda"]):
+        return "snack"
+    return None
+
+
+def _parse_date_from_text(text: str) -> date | None:
+    lower = text.lower()
+    today = date.today()
+    if any(k in lower for k in ["ayer", "yesterday", "anoche", "last night"]):
+        return today - timedelta(days=1)
+    if any(k in lower for k in ["hoy", "today"]):
+        return today
+
+    month_map = {
+        "january": 1,
+        "february": 2,
+        "march": 3,
+        "april": 4,
+        "may": 5,
+        "june": 6,
+        "july": 7,
+        "august": 8,
+        "september": 9,
+        "october": 10,
+        "november": 11,
+        "december": 12,
+        "enero": 1,
+        "febrero": 2,
+        "marzo": 3,
+        "abril": 4,
+        "mayo": 5,
+        "junio": 6,
+        "julio": 7,
+        "agosto": 8,
+        "septiembre": 9,
+        "octubre": 10,
+        "noviembre": 11,
+        "diciembre": 12,
+    }
+    # Match "30 de abril" / "30 abril" / "april 30"
+    day = None
+    month = None
+    for m in re.finditer(r"\b(\d{1,2})\s*(?:de\s+)?([a-zA-Záéíóúñ]+)\b", lower):
+        d, mo = int(m.group(1)), m.group(2)
+        mo = (
+            mo.replace("á", "a")
+            .replace("é", "e")
+            .replace("í", "i")
+            .replace("ó", "o")
+            .replace("ú", "u")
+            .replace("ñ", "n")
+        )
+        if mo in month_map:
+            day, month = d, month_map[mo]
+            break
+    if day is None:
+        for m in re.finditer(r"\b([a-zA-Záéíóúñ]+)\s+(\d{1,2})\b", lower):
+            mo, d = m.group(1), int(m.group(2))
+            mo = (
+                mo.replace("á", "a")
+                .replace("é", "e")
+                .replace("í", "i")
+                .replace("ó", "o")
+                .replace("ú", "u")
+                .replace("ñ", "n")
+            )
+            if mo in month_map:
+                day, month = d, month_map[mo]
+                break
+    if day and month:
+        year = today.year
+        try:
+            candidate = date(year, month, day)
+        except ValueError:
+            return None
+        if candidate > today:
+            candidate = date(year - 1, month, day)
+        return candidate
+    return None
 
 
 def _find_food_candidate(

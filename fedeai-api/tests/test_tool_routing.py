@@ -193,3 +193,87 @@ def test_delete_food_entry(monkeypatch):
         assert "Deleted food entry" in result.message
     finally:
         db.close()
+
+
+def test_update_food_uses_spanish_yesterday_from_text(monkeypatch):
+    steps = iter(
+        [
+            {
+                "tool": "log_food",
+                "params": {
+                    "meal_type": "lunch",
+                    "food_item": "plato de ensalada campera",
+                    "calories": 500,
+                    "protein_g": 12,
+                    "carbs_g": 55,
+                    "fat_g": 20,
+                },
+            },
+            {
+                "tool": "update_food",
+                "params": {
+                    "food_item_contains": "ensalada campera",
+                    "meal_type": "lunch",
+                },
+            },
+        ]
+    )
+
+    def fake_router(_text: str):
+        return next(steps)
+
+    monkeypatch.setattr("app.services.tool_router.infer_tool_call_from_text", fake_router)
+    db = SessionLocal()
+    try:
+        _ = route_free_text(db, user_ref="999", text="log ensalada")
+        result = route_free_text(
+            db,
+            user_ref="999",
+            text="mueve 1 plato de ensalada campera a la cena de ayer",
+        )
+        assert result.ok is True
+        assert "dinner on" in result.message
+    finally:
+        db.close()
+
+
+def test_update_food_uses_spanish_explicit_date(monkeypatch):
+    steps = iter(
+        [
+            {
+                "tool": "log_food",
+                "params": {
+                    "meal_type": "lunch",
+                    "food_item": "plato de ensalada campera",
+                    "calories": 500,
+                    "protein_g": 12,
+                    "carbs_g": 55,
+                    "fat_g": 20,
+                },
+            },
+            {
+                "tool": "update_food",
+                "params": {
+                    "food_item_contains": "ensalada campera",
+                    "meal_type": "lunch",
+                },
+            },
+        ]
+    )
+
+    def fake_router(_text: str):
+        return next(steps)
+
+    monkeypatch.setattr("app.services.tool_router.infer_tool_call_from_text", fake_router)
+    db = SessionLocal()
+    try:
+        _ = route_free_text(db, user_ref="999", text="log ensalada")
+        result = route_free_text(
+            db,
+            user_ref="999",
+            text="mueve 1 plato de ensalada campera a la cena de 30 de abril",
+        )
+        assert result.ok is True
+        assert "-04-30" in result.message
+    finally:
+        db.close()

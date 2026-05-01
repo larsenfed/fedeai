@@ -30,3 +30,7 @@ openclaw/.openclaw/workspace/**/.cache/
 # Imported backups (large/sensitive)
 vm-import/backups/*.tgz
 vm-import/inventory/*.journal.txt
+
+# Local test/runtime artifacts
+test.db
+*.png

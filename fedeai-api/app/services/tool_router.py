@@ -192,7 +192,13 @@ def route_free_text(db: Session, user_ref: str, text: str) -> ToolResponse:
         if tool == "log_weight":
             w = params.get("weight_kg")
             if w is not None:
-                return log_weight(db, user_ref, float(w), notes="Logged from AI tool mapping")
+                return log_weight(
+                    db,
+                    user_ref,
+                    float(w),
+                    log_date=_parse_optional_date(params.get("log_date")),
+                    notes="Logged from AI tool mapping",
+                )
 
         if tool == "chart_weight":
             return build_weight_chart(db, user_ref, int(params.get("days", 30)))
@@ -215,8 +221,29 @@ def route_free_text(db: Session, user_ref: str, text: str) -> ToolResponse:
                     protein_g=float(params["protein_g"]),
                     carbs_g=float(params["carbs_g"]),
                     fat_g=float(params["fat_g"]),
+                    log_date=_parse_optional_date(params.get("log_date")),
                     notes="Estimated from AI tool mapping",
                 )
+
+        if tool == "update_food":
+            return update_food_entry(
+                db=db,
+                user_ref=user_ref,
+                food_item_contains=_safe_str(params.get("food_item_contains")),
+                meal_type=_safe_str(params.get("meal_type")),
+                from_date=_parse_optional_date(params.get("from_date")),
+                to_date=_parse_optional_date(params.get("to_date")),
+                to_meal_type=_safe_str(params.get("to_meal_type")),
+            )
+
+        if tool == "delete_food":
+            return delete_food_entry(
+                db=db,
+                user_ref=user_ref,
+                food_item_contains=_safe_str(params.get("food_item_contains")),
+                meal_type=_safe_str(params.get("meal_type")),
+                log_date=_parse_optional_date(params.get("log_date")),
+            )
     except Exception:
         # Fallback to deterministic matching below.
         pass
@@ -276,6 +303,97 @@ def route_free_text(db: Session, user_ref: str, text: str) -> ToolResponse:
             return ToolResponse(tool="log_food", ok=False, message=f"Could not parse meal text: {exc}")
 
     return ToolResponse(tool="unknown", ok=False, message="Could not map message to a tool.")
+
+
+def _safe_str(v) -> str | None:
+    if v is None:
+        return None
+    s = str(v).strip()
+    return s or None
+
+
+def _parse_optional_date(v) -> date | None:
+    if not v:
+        return None
+    if isinstance(v, date):
+        return v
+    try:
+        return datetime.strptime(str(v), "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
+def _find_food_candidate(
+    db: Session,
+    user_id: int,
+    food_item_contains: str | None = None,
+    meal_type: str | None = None,
+    log_date: date | None = None,
+):
+    q = select(models.FoodLog).where(models.FoodLog.user_id == user_id)
+    if food_item_contains:
+        q = q.where(models.FoodLog.food_item.ilike(f"%{food_item_contains}%"))
+    if meal_type:
+        q = q.where(models.FoodLog.meal_type == meal_type)
+    if log_date:
+        q = q.where(models.FoodLog.log_date == log_date)
+    q = q.order_by(models.FoodLog.created_at.desc())
+    return db.scalar(q)
+
+
+def update_food_entry(
+    db: Session,
+    user_ref: str,
+    food_item_contains: str | None = None,
+    meal_type: str | None = None,
+    from_date: date | None = None,
+    to_date: date | None = None,
+    to_meal_type: str | None = None,
+) -> ToolResponse:
+    user = get_or_create_user(db, user_ref)
+    entry = _find_food_candidate(
+        db=db,
+        user_id=user.id,
+        food_item_contains=food_item_contains,
+        meal_type=meal_type,
+        log_date=from_date,
+    )
+    if not entry:
+        return ToolResponse(tool="update_food", ok=False, message="No matching food record found to update.")
+
+    if to_date:
+        entry.log_date = to_date
+    if to_meal_type:
+        entry.meal_type = to_meal_type
+    db.commit()
+    return ToolResponse(
+        tool="update_food",
+        ok=True,
+        message=f"Updated food entry: {entry.food_item} -> {entry.meal_type} on {entry.log_date.isoformat()}",
+    )
+
+
+def delete_food_entry(
+    db: Session,
+    user_ref: str,
+    food_item_contains: str | None = None,
+    meal_type: str | None = None,
+    log_date: date | None = None,
+) -> ToolResponse:
+    user = get_or_create_user(db, user_ref)
+    entry = _find_food_candidate(
+        db=db,
+        user_id=user.id,
+        food_item_contains=food_item_contains,
+        meal_type=meal_type,
+        log_date=log_date,
+    )
+    if not entry:
+        return ToolResponse(tool="delete_food", ok=False, message="No matching food record found to delete.")
+    food_item = entry.food_item
+    db.delete(entry)
+    db.commit()
+    return ToolResponse(tool="delete_food", ok=True, message=f"Deleted food entry: {food_item}")
 
 
 def upsert_goals(

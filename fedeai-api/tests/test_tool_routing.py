@@ -91,3 +91,105 @@ def test_unstructured_weight_via_ai_tool_mapping(monkeypatch):
         assert "77.2" in result.message
     finally:
         db.close()
+
+
+def test_log_food_with_past_date_from_ai(monkeypatch):
+    def fake_router(_text: str):
+        return {
+            "tool": "log_food",
+            "params": {
+                "meal_type": "dinner",
+                "food_item": "ensalada con pollo",
+                "calories": 550,
+                "protein_g": 42,
+                "carbs_g": 18,
+                "fat_g": 27,
+                "log_date": "2026-04-30",
+            },
+        }
+
+    monkeypatch.setattr("app.services.tool_router.infer_tool_call_from_text", fake_router)
+    db = SessionLocal()
+    try:
+        result = route_free_text(db, user_ref="999", text="dinner last night chicken salad")
+        assert result.ok is True
+        assert result.tool == "log_food"
+    finally:
+        db.close()
+
+
+def test_update_food_date_and_meal(monkeypatch):
+    steps = iter(
+        [
+            {
+                "tool": "log_food",
+                "params": {
+                    "meal_type": "breakfast",
+                    "food_item": "ensalada",
+                    "calories": 300,
+                    "protein_g": 15,
+                    "carbs_g": 20,
+                    "fat_g": 15,
+                },
+            },
+            {
+                "tool": "update_food",
+                "params": {
+                    "food_item_contains": "ensalada",
+                    "meal_type": "breakfast",
+                    "to_date": "2026-04-30",
+                    "to_meal_type": "dinner",
+                },
+            },
+        ]
+    )
+
+    def fake_router(_text: str):
+        return next(steps)
+
+    monkeypatch.setattr("app.services.tool_router.infer_tool_call_from_text", fake_router)
+    db = SessionLocal()
+    try:
+        _ = route_free_text(db, user_ref="999", text="log ensalada")
+        result = route_free_text(db, user_ref="999", text="move that ensalada to yesterday dinner")
+        assert result.ok is True
+        assert result.tool == "update_food"
+        assert "Updated food entry" in result.message
+    finally:
+        db.close()
+
+
+def test_delete_food_entry(monkeypatch):
+    steps = iter(
+        [
+            {
+                "tool": "log_food",
+                "params": {
+                    "meal_type": "breakfast",
+                    "food_item": "toast",
+                    "calories": 200,
+                    "protein_g": 8,
+                    "carbs_g": 30,
+                    "fat_g": 6,
+                },
+            },
+            {
+                "tool": "delete_food",
+                "params": {"food_item_contains": "toast", "meal_type": "breakfast"},
+            },
+        ]
+    )
+
+    def fake_router(_text: str):
+        return next(steps)
+
+    monkeypatch.setattr("app.services.tool_router.infer_tool_call_from_text", fake_router)
+    db = SessionLocal()
+    try:
+        _ = route_free_text(db, user_ref="999", text="log breakfast toast")
+        result = route_free_text(db, user_ref="999", text="delete the breakfast it was a mistake")
+        assert result.ok is True
+        assert result.tool == "delete_food"
+        assert "Deleted food entry" in result.message
+    finally:
+        db.close()

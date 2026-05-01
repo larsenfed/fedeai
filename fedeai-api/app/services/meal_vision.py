@@ -101,10 +101,15 @@ def infer_tool_call_from_text(text: str) -> dict:
     prompt = (
         "Map this user message to one health tool call. "
         "Return strict JSON with keys: tool, params. "
-        "Allowed tools: log_food, log_weight, chart_weight, chart_macro, chart_calories, unknown. "
-        "For log_weight include weight_kg. "
+        "Allowed tools: log_food, log_weight, chart_weight, chart_macro, chart_calories, update_food, delete_food, unknown. "
+        "For log_weight include weight_kg and optional log_date (YYYY-MM-DD). "
         "For chart_* include days (integer). "
-        "For log_food include meal_type, food_item, calories, protein_g, carbs_g, fat_g. "
+        "For log_food include meal_type, food_item, calories, protein_g, carbs_g, fat_g, optional log_date (YYYY-MM-DD). "
+        "For update_food include selectors (food_item_contains and/or meal_type and/or from_date) and target fields (to_date, to_meal_type). "
+        "For delete_food include selectors (food_item_contains and/or meal_type and/or log_date). "
+        "Interpret time references: if user says 'last night' or 'yesterday', set date to yesterday; "
+        "'last monday' should become the correct past Monday date. "
+        "If user gives no date, assume today. "
         "If user says 'this week', set days=7. "
         "If user says 'this month', set days=30."
     )

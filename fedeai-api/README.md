@@ -8,7 +8,7 @@ Python API backend for Telegram + REST with deterministic tool routing.
 - Matplotlib for charts
 - Telegram webhook endpoint
 
-## Local run
+## Local run xtx
 1. Copy `.env.example` to `.env` and fill values.
 2. Install dependencies:
    - `pip install -r requirements.txt`
